@@ -11,8 +11,8 @@ import time
 
 # ================= 配置区域 =================
 # 数据文件路径
-TRAIN_PKL = './rafdb_train.pkl'
-TEST_PKL = './rafdb_test.pkl'
+TRAIN_PKL = './dataset/rafdb_train.pkl'
+TEST_PKL = './dataset/rafdb_test.pkl'
 
 # 训练超参数
 BATCH_SIZE = 512       # A100 显存很大，可以设大一点
@@ -22,7 +22,7 @@ NUM_CLASSES = 7       # RAF-DB 是 7 类表情
 NUM_WORKERS = 8       # 数据加载线程数
 
 # 模型保存路径
-SAVE_PATH = './best_rafdb_resnet50.pth'
+SAVE_PATH = './output/best_rafdb_resnet50.pth'
 # ===========================================
 
 # 1. 定义数据集类
@@ -128,6 +128,12 @@ def test(model, loader, criterion, device):
 
 # ================= 主程序 =================
 if __name__ == '__main__':
+    # 用于记录历史的列表
+    train_loss_list = []
+    train_acc_list = []
+    test_loss_list = []
+    test_acc_list = []
+
     # 设备选择
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"🚀 使用设备: {device}")
@@ -145,7 +151,7 @@ if __name__ == '__main__':
     # 初始化模型
     model = get_model()
     
-    # 多卡并行 (DataParallel)
+    # 多卡并行
     if torch.cuda.device_count() > 1:
         model = nn.DataParallel(model)
     
@@ -153,9 +159,7 @@ if __name__ == '__main__':
     
     # 损失函数和优化器
     criterion = nn.CrossEntropyLoss()
-    # 使用 Adam 优化器，论文中也是用的 Adam
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=5e-4)
-    # 学习率衰减策略
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=10, gamma=0.1)
 
     best_acc = 0.0
@@ -167,6 +171,12 @@ if __name__ == '__main__':
         train_loss, train_acc = train_epoch(model, train_loader, criterion, optimizer, device)
         test_loss, test_acc = test(model, test_loader, criterion, device)
         
+        # 记录数据
+        train_loss_list.append(train_loss)
+        train_acc_list.append(train_acc)
+        test_loss_list.append(test_loss)
+        test_acc_list.append(test_acc)
+        
         # 学习率更新
         scheduler.step()
         
@@ -175,9 +185,18 @@ if __name__ == '__main__':
         # 保存最佳模型
         if test_acc > best_acc:
             best_acc = test_acc
-            # 如果是多卡，保存 model.module.state_dict()，否则保存 model.state_dict()
             state_dict = model.module.state_dict() if torch.cuda.device_count() > 1 else model.state_dict()
             torch.save(state_dict, SAVE_PATH)
             print(f"💾 发现更好的模型 (Acc: {test_acc:.2f}%)，已保存至 {SAVE_PATH}")
 
+    # 训练结束后，保存历史记录以便绘图
+    history = {
+        'train_loss': train_loss_list,
+        'train_acc': train_acc_list,
+        'test_loss': test_loss_list,
+        'test_acc': test_acc_list
+    }
+    with open('./output/rafdb_history.pkl', 'wb') as f:
+        pickle.dump(history, f)
     print(f"\n🎉 训练完成！最佳测试准确率: {best_acc:.2f}%")
+    print("📊 训练历史已保存至 ./output/rafdb_history.pkl")

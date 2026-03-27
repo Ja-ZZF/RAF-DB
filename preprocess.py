@@ -5,7 +5,7 @@ from tqdm import tqdm
 
 # ================= 配置区域 =================
 # 数据集根目录
-DATASET_ROOT = './datasets'
+DATASET_ROOT = './metadata'
 # 图片存放目录 (根据你的 tree 结构)
 IMG_DIR = os.path.join(DATASET_ROOT, 'DATASET')
 # 标签文件
@@ -13,8 +13,8 @@ TRAIN_LABELS_FILE = os.path.join(DATASET_ROOT, 'train_labels.csv')
 TEST_LABELS_FILE = os.path.join(DATASET_ROOT, 'test_labels.csv')
 
 # 输出文件 (预处理后保存的文件)
-OUTPUT_TRAIN_PKL = './rafdb_train.pkl'
-OUTPUT_TEST_PKL = './rafdb_test.pkl'
+OUTPUT_TRAIN_PKL = './dataset/rafdb_train.pkl'
+OUTPUT_TEST_PKL = './dataset/rafdb_test.pkl'
 # ===========================================
 
 def load_and_process_data(labels_file, split_name):
